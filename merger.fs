@@ -41,9 +41,4 @@ void main(){
     vec3 specular = vec3(spec,spec,spec);
 
     color = vec4(diffuse+specular,1.0);
-
-    //color = vec4(spec,spec,spec,1.0);
-    //color = vec4(tap5.x,tap5.y,tap5.z,1.0);
-    //tap5 = weights[5];
-    //color = vec4(tap5.x,tap5.y,tap5.z,1.0);
 }
