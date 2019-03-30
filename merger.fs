@@ -1,14 +1,25 @@
 #version 430 core
 out vec4 color;
 
-in vec2 texcoord;
+in Pipe{
+	vec2 TexCoord;
+} fsInput;
 
-uniform sampler2D diff0;
-uniform sampler2D diff1;
-uniform sampler2D diff2;
-uniform sampler2D diff3;
-uniform sampler2D diff4;
-uniform sampler2D diff5;
+uniform struct Material{
+	uint flags;
+	vec3 diffuse, ambient;
+	sampler2D diffuseTexture;
+	sampler2D ambientTexture;
+} material;
+
+uniform sampler2D irrmap0;
+uniform sampler2D irrmap1;
+uniform sampler2D irrmap2;
+uniform sampler2D irrmap3;
+uniform sampler2D irrmap4;
+uniform sampler2D irrmap5;
+
+uniform float irrmix;
 
 vec3 weights[6] = {
     vec3(0.233,0.455,0.649),
@@ -19,26 +30,41 @@ vec3 weights[6] = {
     vec3(0.078,0.000,0.000)
 };
 
+float gamma = 2.2;
+
 void main(){
-    vec3 tap0 = texture(diff0, texcoord).xyz;
-    vec3 tap1 = texture(diff1, texcoord).xyz;
-    vec3 tap2 = texture(diff2, texcoord).xyz;
-    vec3 tap3 = texture(diff3, texcoord).xyz;
-    vec3 tap4 = texture(diff4, texcoord).xyz;
-    vec3 tap5 = texture(diff5, texcoord).xyz;
+
+	// Ambient
+	vec3 Ambient = material.ambient;
+	if((material.flags & 1u)!=0) 
+		Ambient *= (pow(texture(material.ambientTexture,fsInput.TexCoord).bgr,vec3(gamma,gamma,gamma)));
+
+	// Diffuse
+	vec3 Albeo = material.diffuse;
+	if((material.flags & 2u)!=0)  
+		Albeo *= (pow(texture(material.diffuseTexture,fsInput.TexCoord).bgr,vec3(gamma,gamma,gamma)));
+	
+	vec4 base = texture(irrmap0, fsInput.TexCoord);
+    vec3 tap0 = base.xyz;
+    vec3 tap1 = texture(irrmap1, fsInput.TexCoord).xyz;
+    vec3 tap2 = texture(irrmap2, fsInput.TexCoord).xyz;
+    vec3 tap3 = texture(irrmap3, fsInput.TexCoord).xyz;
+    vec3 tap4 = texture(irrmap4, fsInput.TexCoord).xyz;
+    vec3 tap5 = texture(irrmap5, fsInput.TexCoord).xyz;
 
     vec3 total_weight = weights[0]+weights[1]+weights[2]+weights[3]+weights[4]+weights[5];
-    vec3 diffuse = vec3(0,0,0);
-    diffuse += tap0*weights[0];
-    diffuse += tap1*weights[1];
-    diffuse += tap2*weights[2];
-    diffuse += tap3*weights[3];
-    diffuse += tap4*weights[4];
-    diffuse += tap5*weights[5];
-    diffuse /= total_weight;
+    vec3 irr = vec3(0,0,0);
+    irr += tap0*weights[0];
+    irr += tap1*weights[1];
+    irr += tap2*weights[2];
+    irr += tap3*weights[3];
+    irr += tap4*weights[4];
+    irr += tap5*weights[5];
+    irr *= (1.0 / total_weight);
 
-    float spec = texture(diff0, texcoord).w*3;
-    vec3 specular = vec3(spec,spec,spec);
+	//specular
+    vec3 Specular = vec3(base.w,base.w,base.w);
 
-    color = vec4(diffuse+specular,1.0);
+    color = vec4(pow(Ambient+irr*pow(Albeo,vec3(1.0-irrmix)),vec3(1.0/gamma))+Specular,1.0);
+	//color = vec4(pow(Ambient+base.xyz*Albeo+Specular,vec3(1.0/gamma)),1.0);
 }
